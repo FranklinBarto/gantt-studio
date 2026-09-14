@@ -1,70 +1,82 @@
-# Getting Started with Create React App
+# Gantt Studio — MSPDI Edition
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This version uses the **Microsoft Office Project XML Data Interchange (MSPDI)** schema as its project interchange format.
 
-## Available Scripts
+Microsoft documents MSPDI as the XML interchange format for Microsoft Project. The schema is centered on a `<Project>` root with project properties, calendars, tasks, resources and assignments. This app exports those structures as `.xml` and can import MSPDI XML back into the editor.
 
-In the project directory, you can run:
+## MSPDI implementation
 
-### `npm start`
+The XML export includes:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- `<Project>` with `SaveVersion`, `GUID`, `UID`, `Name`, `Title`, `Subject`, `StartDate`, `FinishDate`, calendar settings and project defaults.
+- `<Calendars>` with a Standard base calendar and Monday–Friday 08:00–12:00 / 13:00–17:00 working periods.
+- `<Tasks>` with `UID`, `ID`, `Name`, `WBS`, `OutlineNumber`, `Start`, `Finish`, `Duration`, `DurationFormat`, `Work`, `CalendarUID`, `Notes`, `PercentComplete`, `Milestone`, `Summary` and `ExtendedAttribute`.
+- `<Resources>` with an unassigned resource.
+- `<Assignments>` linking each task to the unassigned resource.
+- Gantt Studio theme metadata is stored in an MSPDI task `ExtendedAttribute` so the visual preset can survive an XML round-trip.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+The task duration is represented as ISO 8601 XML duration data, using Microsoft Project's `DurationFormat=7` for working days.
 
-### `npm test`
+## Import / export
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Use **Open XML** to load an MSPDI project. Use **Export → Microsoft Project XML (MSPDI)** to create an XML project intended for Microsoft Project interoperability.
 
-### `npm run build`
+PNG, PDF, PowerPoint and Excel exports remain available as presentation formats.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Run
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm install
+npm run dev
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Then:
 
-### `npm run eject`
+```bash
+npm run build
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Important interoperability note
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+MSPDI is a project interchange format, not a visual Gantt-chart styling standard. Therefore, scheduling information is represented in MSPDI fields, while the Gantt Studio visual theme remains application presentation metadata. The core project schedule is still expressed using MSPDI's project/task/calendar/resource/assignment model.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## Dependencies / task relationships
 
-## Learn More
+Each task can have a predecessor and an MSPDI task link type:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- **FS — Finish-to-Start**
+- **FF — Finish-to-Finish**
+- **SF — Start-to-Finish**
+- **SS — Start-to-Start**
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+The application writes these as `<PredecessorLink>` elements under the dependent `<Task>`, using the MSPDI `Type` values documented by Microsoft: `0=FF`, `1=FS`, `2=SF`, `3=SS`. Optional lag is exported using `LinkLag` and `LagFormat`.
 
-### Code Splitting
+The editor includes a Dependency column where the predecessor, relationship type and lag can be changed without editing XML manually. Imported MSPDI predecessor links are read back into the editor.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Text layout
 
-### Analyzing the Bundle Size
+The Initiative and Objective columns are now flexible and wrap long text instead of clipping it. The grid uses minimum column widths, expandable text fields and a dedicated Dependency column. Excel export uses wrapped cells and increased row height; PowerPoint uses shrink-to-fit text for dense slides.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### Initiative settings and relationships
 
-### Making a Progressive Web App
+The main Gantt grid intentionally keeps relationship controls out of the timeline. Use the **initiative settings** button on any initiative row to open a dedicated modal. The modal has:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- Initiative name and objective editing
+- A Relationships tab
+- Multiple predecessor relationships per initiative
+- Finish-to-Finish (FF), Finish-to-Start (FS), Start-to-Finish (SF), and Start-to-Start (SS)
+- Positive or negative lag in days
+- Add/remove relationship controls
 
-### Advanced Configuration
+MSPDI export writes each relationship as a separate `PredecessorLink`, matching the Microsoft Project XML structure. Microsoft documents `PredecessorLink` as supporting multiple occurrences and the four link types. citeturn0search0turn0search4
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### Adaptive timeline scale
+The visible timeline automatically selects a useful unit from the selected timeframe:
+- 0–3 days: hourly
+- 4–21 days: daily
+- 22–120 days: weekly
+- More than 120 days: monthly
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Task start and finish can be edited with date and time in Initiative Settings. The same date/time values are used for MSPDI XML export.
+# gantt-studio
